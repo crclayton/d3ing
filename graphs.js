@@ -308,11 +308,11 @@ var svg = d3.select("body").append("svg")
 
 
 function mouseover(d, i) {
-    
+    console.log(d);
                 tooltip.transition()
                 .duration(200)
                 .style("opacity", .9)
-            tooltip.html("thasoeu")
+                tooltip.html("Comments: " + d.key)
                 .style("left", (d3.event.pageX + 5) + "px")
                 .style("top", (d3.event.pageY - 28) + "px");
                 

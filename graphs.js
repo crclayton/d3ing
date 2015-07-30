@@ -144,7 +144,7 @@ var tooltip = d3.select("body").append("div")
         })
         .on("mouseout", function (d) {
             tooltip.transition()
-                .duration(500)
+                .duration(200)
                 .style("opacity", 0);
         });
 
@@ -302,7 +302,7 @@ var svg = d3.select("body").append("svg")
       .attr("d", function(d) { return line(d.values); })
       .style("stroke", function(d) { return color(d.key); })
       .on("mouseover", mouseover)
-            .on("mouseout", mouseout)
+      .on("mouseout", mouseout)
       .attr("id", function(d){ return d.key;})
 
 
@@ -312,29 +312,29 @@ function mouseover(d, i) {
                 tooltip.transition()
                 .duration(200)
                 .style("opacity", .9)
-                tooltip.html("Comments: " + d.key)
+                tooltip.html(d.key)
                 .style("left", (d3.event.pageX + 5) + "px")
                 .style("top", (d3.event.pageY - 28) + "px");
                 
     var n = this.getAttribute("id");
    
-    d3.selectAll("path")
-        .style("stroke-width", 2)
+    d3.selectAll(".line")
+        .style("stroke-width", 1.5)
         .style("opacity", 0.2)
 
     d3.selectAll("#" + n)
-        .style("stroke-width", 3)
+        .style("stroke-width", 4)
         .style("opacity", 0.7)
 }
 
 function mouseout(d, i) {
 
-    d3.selectAll("path")
-        .style("stroke-width", 2)
+    d3.selectAll(".line")
+        .style("stroke-width", 1.5)
         .style("opacity", 0.7);
         
                     tooltip.transition()
-                .duration(500)
+                .duration(200)
                 .style("opacity", 0);
 };
 

@@ -1,4 +1,4 @@
-# d3ing
-Messing around with creating my own d3 graphs. I like d3 because it allows so much customization, but it can be a pain if you just want to throw a graph together. 
+# quick viz
 
-This is to create simple functions to create fast graphs.
+Using d3.js with TypeScript to create a reusable library for me to create customizable but visually consistent graphs.
+

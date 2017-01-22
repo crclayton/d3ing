@@ -5,7 +5,7 @@ declare var d3 : any; // defined in d3.js
 
 interface IGraphOptions {
     xIsDate:        boolean;
-    bubble:         boolean;
+    isBubble:       boolean;
     legend:         boolean;
     xColumn:        string;
     yColumn:        string;
@@ -27,28 +27,78 @@ interface IGraphOptions {
 }
 
 var defaultOptions : IGraphOptions = {
-    xIsDate:  false,    
-    bubble:  false,
-    legend:  true,
-    xColumn:  null,
-    yColumn:  null,
-    rColumn:  null, 
-    cColumn:  "category",
-    nColumn:  "note",
-    height:  300,
-    width:  600,
+    xIsDate:    false,    
+    isBubble:   false,
+    legend:     true,
+    xColumn:    null,
+    yColumn:    null,
+    rColumn:    null, 
+    cColumn:    "category",
+    nColumn:    "note",
+    height:     300,
+    width:      600,
     xAxisName:  "",
     yAxisName:  "",
-    maxRad:  4,
-    minRad:  1,
-    appendTo:  "body",
-    title:  "",
-    pointOpacity:  0.7,
-    fadeOutOpacity:  0.1,
-    dateFormat: "%d/%m/%Y"
+    maxRad:     4,
+    minRad:     1,
+    appendTo:   "body",
+    title:      "",
+    pointOpacity:   0.7,
+    fadeOutOpacity: 0.1,
+    dateFormat:     "%d/%m/%Y"
 }
 
 
+interface IValue {
+    tooltip: Function;
+    numeric: Function;
+    [key:string] : any;
+}
+
+var setupXValue = (data: any, options: IGraphOptions) : IValue => {
+
+    if (options.xIsDate) {
+        var parseDate = d3.time.format(options.dateFormat).parse;
+        return {
+            tooltip: (d: any) => formatDate(d[options.xColumn]),
+            numeric: (d: any) => +parseDate(d[options.xColumn])
+        };
+
+    } else {
+        return {
+            tooltip: (d: any) => d[options.xColumn],
+            numeric: (d: any) => +d[options.xColumn]
+        };
+    }
+}
+
+
+var setupRadiusValue = (data: any, options:IGraphOptions) : IValue => {
+
+    if (options.isBubble) {
+
+        // get largest and smallest value so we can scale our bubbles' radius to that
+        var rads: Array<number> = [];
+        data.forEach((d: any) => { rads.push(d[options.rColumn]); });
+
+        var max = Math.max.apply(Math, rads);
+        var min = Math.min.apply(Math, rads);
+
+        var scaleBetween: Function = d3.scale.linear()
+            .domain([min, max])
+            .range([options.maxRad, options.minRad]);
+
+        return {
+            tooltip: (d:any) => d[options.rColumn],              // for showing the real value in the tooltip
+            numeric: (d:any) => scaleBetween(d[options.rColumn]) // for creating the scaled radius
+        };
+    } else {
+        return {
+            tooltip: () => options.maxRad,
+            numeric: () => options.maxRad
+        };
+    }
+}
 
 var scatter = (data: Array<Object>, options: IGraphOptions) => {
 
@@ -64,107 +114,34 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
         });
 
 
-    // this is a bit of a cheeky hack, but if there's no radius column
-    // ie. it's a scatter plot, not a bubble plot, set the rColumn to 
-    // be the yColumn, but make the range of the bubble size equal
-
+    var radius = setupRadiusValue(data, options);
+    var x = setupXValue(data, options);
+    var y: Function         = (d: any) => +d[options.yColumn];
+    var category: Function  = (d: any) => d[options.cColumn];
+    var note: Function      = (d: any) => d[options.nColumn];
+   
     // Set the ranges
-    var x = d3.time.scale().range([0, options.width]);
-    var y = d3.scale.linear().range([options.height, 0]);
+    var xDomain = d3.time.scale().range([0, options.width]);
+    var yDomain = d3.scale.linear().range([options.height, 0]);
 
-    data.forEach((d:any) => {
-        d[options.yColumn] = +d[options.yColumn];
-    });
+    // convert X and Y axis strings to numbers
+    data.forEach((d: any) => {  d[options.xColumn] = x.numeric(d); });
 
-    y.domain([
-        0, d3.max(data, (d : any) => d[options.yColumn])
-    ]);
+    yDomain.domain([0, d3.max(data, (d: any) => y(d))]);
+    xDomain.domain(d3.extent(data, (d: any) => d[options.xColumn]));
 
-    var xValue : any, rValue : any, rValueScaled : any;
-
-    if (options["bubble"]) {
-
-        // get largest and smallest radius value so we can scale to that
-        var rads : Array<number> = [];
-
-        data.forEach((d: any) => {
-            rads.push(d[options.rColumn]);
-        });
-
-        var max = Math.max.apply(Math, rads);
-        var min = Math.min.apply(Math, rads);
-
-        var scaleBetween = d3.scale.linear()
-            .domain([min, max])
-            .range([options.maxRad, options.minRad]);
-
-        rValue = (d: any) => d[options.rColumn];     
-        rValueScaled = (d: any) => scaleBetween(d[options.rColumn]);
-    }
-    else 
-    {
-        rValue = () => options.maxRad;
-        rValueScaled = () => options.maxRad;
-    }
-
-    if (options.xIsDate) {
-        var dateFormat = options.dateFormat;
-
-        // Parse the date / time
-        var parseDate = d3.time.format(dateFormat).parse;
-
-        // parse date to present in a pretty way in the tooltip
-        xValue = (d: any) => {
-
-            var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            var months = [
-                'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
-                'November', 'December'
-            ];
-
-            d = d[options.xColumn];
-
-            var day = days[new Date(d).getDay()].substr(0, 3);
-            var month = months[new Date(d).getMonth()];
-
-            return day + " " + month + " " + new Date(d).getDate() + ", " + new Date(d).getFullYear();
-
-        };
-
-
-        data.forEach((d:any) => {
-            d[options.xColumn] = parseDate(d[options.xColumn]);
-        });
-
-        // Scale the range of the data
-        x.domain(d3.extent(data, (d : any) => d[options.xColumn]));
-
-    } else {
-        xValue = (d : any): string => d[options.xColumn];
-
-        data.forEach((d:any) => {
-            d[options.xColumn] = +(d[options.xColumn]);
-        });
-
-        x.domain([
-            0, d3.max(data, (d:any) => d[options.xColumn])
-        ]);
-    }
-
-
+    // todo: use this if you want to force the X axis to start at zero
+    //x.domain([0, d3.max(data, (d: any) => d[options.xColumn])]);
 
     // Define the axes
     var xAxis = d3.svg.axis()
-            .scale(x)
+            .scale(xDomain)
             .orient("bottom")
             .ticks(5),
         yAxis = d3.svg.axis()
-            .scale(y)
+            .scale(yDomain)
             .orient("left")
             .ticks(5);
-
-    var yValue = (d:any) => d[options.yColumn],
-        cValue = (d:any) => d[options["cColumn"]];
 
     // add the tooltip area to the webpage
     var tooltip = d3.select("body")
@@ -173,7 +150,7 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
         .style("opacity", 0);
 
     // Adds the svg canvas
-    var svg = d3.select(options["appendTo"])
+    var svg = d3.select(options.appendTo)
         .append("svg")
         .attr("width", options.width + margin.left + margin.right)
         .attr("height", options.height + margin.top + margin.bottom)
@@ -186,7 +163,7 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
         .attr("y", 0 - (margin.top / 2))
         .attr("text-anchor", "middle")
         .style("font-weight", "bold")
-        .text(options["title"]);
+        .text(options.title);
 
     // x-axis
     svg.append("g")
@@ -197,7 +174,7 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
         .attr("x", options.width)
         .attr("y", -6)
         .style("text-anchor", "end")
-        .text(options["xAxisName"]);
+        .text(options.xAxisName);
 
     // y-axis
     svg.append("g")
@@ -208,7 +185,7 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
         .attr("y", 6)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
-        .text(options["yAxisName"]);
+        .text(options.yAxisName);
 
 
     // Add the scatterplot
@@ -216,28 +193,28 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
         .data(data)
         .enter()
         .append("circle")
-        .attr("class", (d:any, i:number) => d[options.cColumn])
-        .attr("r",      (d:any) =>  rValueScaled(d))
-        .style("fill",  (d:any) =>  color(cValue(d)))
-        .attr("cx",     (d:any) =>  x(d[options.xColumn]))
-        .attr("cy",     (d:any) =>  y(d[options.yColumn]))
+        .attr("class", (d: any) => removeSpaces(category(d)))
+        .attr("r",      (d:any) =>  radius.numeric(d))
+        .style("fill",  (d:any) =>  color(category(d)))
+        .attr("cx", (d: any) =>     +xDomain(d[options.xColumn]))
+        .attr("cy",     (d:any) =>  yDomain(y(d)))
         .on("mouseover",
             (d:any) =>  {
                 tooltip.transition()
                     .duration(200)
                     .style("opacity", .9);
-                tooltip.html(d[options["nColumn"]] +
+                tooltip.html(note(d) +
                         "<table class='bo'><tr><td>X</td><td>" +
-                        xValue(d) +
+                        x.tooltip(d) +
                         "</td></tr>" +
                         "<tr><td>Y</td><td>" +
-                        yValue(d) +
+                        y(d) +
                         "</td></tr>" +
                         "<tr><td>Category</td><td>" +
-                        cValue(d) +
+                        category(d) +
                         "</td></tr>" +
                         "<tr><td>Radius</td><td>" +
-                        rValue(d) +
+                        radius.tooltip(d) +
                         "</td></tr></table>")
                     .style("left", (d3.event.pageX + 5) + "px")
                     .style("top", (d3.event.pageY - 28) + "px");
@@ -260,12 +237,12 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis);
-
+    
     // get unique cColumn categories for the legend
-    const categories = [... data.map((obj: any) => obj[options["cColumn"]])].filter(distinct);
+    const categories = [... data.map((d: any) => category(d))].filter(distinct);
 
     // draw legend
-    if (options["legend"]) {
+    if (options.legend) {
         var legend = svg.selectAll(".legend")
             .data(categories)
             .enter()
@@ -279,7 +256,7 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
             .attr("x", options.width - 18)
             .attr("width", 18)
             .attr("height", 18)
-            .attr("class", (d:any) => colorClass(d)) // the subject name is the class
+            .attr("class", (d:any) => removeSpaces(d)) // the subject name is the class
             .on("mouseover", fadeOutOtherPoints)
             .on("mouseout", removeFadeout)
             .style("fill", color);
@@ -293,12 +270,6 @@ var scatter = (data: Array<Object>, options: IGraphOptions) => {
             .text((d:any) => d)
             .on("mouseover", fadeOutOtherPoints)
             .on("mouseout", removeFadeout);
-    }
-
-    // if the cColumn has a space in it, it will
-    // be given two classes, so remove spaces
-    function colorClass(d : string) {
-        return d.replace(/ /g, "");
     }
 
     // circle and rect elements not of the hovered class are faded
@@ -455,6 +426,8 @@ Array.prototype.lineGraph = function (xAxisName, yAxisName, width, height, maxRa
 
 var color = d3.scale.category10();
 
+
+
 // Set the dimensions of the canvas / graph
 var margin = {
     top: 30,
@@ -464,6 +437,10 @@ var margin = {
 };
 
 
+function removeSpaces(s: string) {
+    return s.replace(/\s/g, "");
+}
+
 function isNull(val:any) {
     return typeof (val) === "undefined";
 }
@@ -472,3 +449,18 @@ function isNull(val:any) {
 function distinct(value:any, index:any, self:any) {
     return self.indexOf(value) === index;
 }
+
+
+function formatDate(d: any) {
+
+    var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var months = [
+        'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+        'November', 'December'
+    ];
+
+    var day = days[new Date(d).getDay()].substr(0, 3);
+    var month = months[new Date(d).getMonth()];
+
+    return day + " " + month + " " + new Date(d).getDate() + ", " + new Date(d).getFullYear();
+};

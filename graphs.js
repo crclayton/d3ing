@@ -10,52 +10,52 @@ var defaultOptions = {
     nColumn: "note",
     height: 300,
     width: 600,
-    xAxisName: null,
-    yAxisName: null,
+    xAxisName: "",
+    yAxisName: "",
     maxRad: 4,
     minRad: 1,
     appendTo: "body",
-    title: null,
+    title: "",
     pointOpacity: 0.7,
     fadeOutOpacity: 0.1,
     dateFormat: "%d/%m/%Y"
 };
 var scatter = function (data, options) {
-    for (var key in defaultOptions) {
-        if (defaultOptions.hasOwnProperty(key)) {
-            if (isNull(defaultOptions[key]) && isNull(options[key]))
-                throw ("Option:" + key + " not supplied");
-            if (isNull(options[key]))
-                options[key] = defaultOptions[key];
-        }
-    }
-    var x = d3.time.scale().range([0, options["width"]]);
-    var y = d3.scale.linear().range([options["height"], 0]);
+    Object.keys(defaultOptions)
+        .forEach(function (key) {
+        if (isNull(defaultOptions[key]) && isNull(options[key]))
+            throw ("Option:" + key + " not supplied");
+        if (isNull(options[key]))
+            options[key] = defaultOptions[key];
+    });
+    var x = d3.time.scale().range([0, options.width]);
+    var y = d3.scale.linear().range([options.height, 0]);
     data.forEach(function (d) {
-        d[options["yColumn"]] = +d[options["yColumn"]];
+        d[options.yColumn] = +d[options.yColumn];
     });
     y.domain([
-        0, d3.max(data, function (d) { return d[options["yColumn"]]; })
+        0, d3.max(data, function (d) { return d[options.yColumn]; })
     ]);
     var xValue, rValue, rValueScaled;
     if (options["bubble"]) {
         var rads = [];
-        for (var i = 0; i < data.length; i++)
-            rads.push(data[i][options["rColumn"]]);
+        data.forEach(function (d) {
+            rads.push(d[options.rColumn]);
+        });
         var max = Math.max.apply(Math, rads);
         var min = Math.min.apply(Math, rads);
         var scaleBetween = d3.scale.linear()
             .domain([min, max])
-            .range([options["maxRad"], options["minRad"]]);
-        rValue = function (d) { return d[options["rColumn"]]; };
-        rValueScaled = function (d) { return scaleBetween(d[options["rColumn"]]); };
+            .range([options.maxRad, options.minRad]);
+        rValue = function (d) { return d[options.rColumn]; };
+        rValueScaled = function (d) { return scaleBetween(d[options.rColumn]); };
     }
     else {
-        rValue = function () { return options["maxRad"]; };
-        rValueScaled = function () { return options["maxRad"]; };
+        rValue = function () { return options.maxRad; };
+        rValueScaled = function () { return options.maxRad; };
     }
-    if (options["xIsDate"]) {
-        var dateFormat = options["dateFormat"];
+    if (options.xIsDate) {
+        var dateFormat = options.dateFormat;
         var parseDate = d3.time.format(dateFormat).parse;
         xValue = function (d) {
             var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -63,23 +63,23 @@ var scatter = function (data, options) {
                 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
                 'November', 'December'
             ];
-            d = d[options["xColumn"]];
+            d = d[options.xColumn];
             var day = days[new Date(d).getDay()].substr(0, 3);
             var month = months[new Date(d).getMonth()];
             return day + " " + month + " " + new Date(d).getDate() + ", " + new Date(d).getFullYear();
         };
         data.forEach(function (d) {
-            d[options["xColumn"]] = parseDate(d[options["xColumn"]]);
+            d[options.xColumn] = parseDate(d[options.xColumn]);
         });
-        x.domain(d3.extent(data, function (d) { return d[options["xColumn"]]; }));
+        x.domain(d3.extent(data, function (d) { return d[options.xColumn]; }));
     }
     else {
-        xValue = function (d) { return d[options["xColumn"]]; };
+        xValue = function (d) { return d[options.xColumn]; };
         data.forEach(function (d) {
-            d[options["xColumn"]] = +(d[options["xColumn"]]);
+            d[options.xColumn] = +(d[options.xColumn]);
         });
         x.domain([
-            0, d3.max(data, function (d) { return d[options["xColumn"]]; })
+            0, d3.max(data, function (d) { return d[options.xColumn]; })
         ]);
     }
     var xAxis = d3.svg.axis()
@@ -89,29 +89,29 @@ var scatter = function (data, options) {
         .scale(y)
         .orient("left")
         .ticks(5);
-    var yValue = function (d) { return d[options["yColumn"]]; }, cValue = function (d) { return d[options["cColumn"]]; };
+    var yValue = function (d) { return d[options.yColumn]; }, cValue = function (d) { return d[options["cColumn"]]; };
     var tooltip = d3.select("body")
         .append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
     var svg = d3.select(options["appendTo"])
         .append("svg")
-        .attr("width", options["width"] + margin.left + margin.right)
-        .attr("height", options["height"] + margin.top + margin.bottom)
+        .attr("width", options.width + margin.left + margin.right)
+        .attr("height", options.height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
     svg.append("text")
-        .attr("x", (options["width"] / 2))
+        .attr("x", (options.width / 2))
         .attr("y", 0 - (margin.top / 2))
         .attr("text-anchor", "middle")
         .style("font-weight", "bold")
         .text(options["title"]);
     svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + options["height"] + ")")
+        .attr("transform", "translate(0," + options.height + ")")
         .append("text")
         .attr("class", "label")
-        .attr("x", options["width"])
+        .attr("x", options.width)
         .attr("y", -6)
         .style("text-anchor", "end")
         .text(options["xAxisName"]);
@@ -128,11 +128,11 @@ var scatter = function (data, options) {
         .data(data)
         .enter()
         .append("circle")
-        .attr("class", function (d, i) { return data[i][options["cColumn"]]; })
+        .attr("class", function (d, i) { return d[options.cColumn]; })
         .attr("r", function (d) { return rValueScaled(d); })
         .style("fill", function (d) { return color(cValue(d)); })
-        .attr("cx", function (d) { return x(d[options["xColumn"]]); })
-        .attr("cy", function (d) { return y(d[options["yColumn"]]); })
+        .attr("cx", function (d) { return x(d[options.xColumn]); })
+        .attr("cy", function (d) { return y(d[options.yColumn]); })
         .on("mouseover", function (d) {
         tooltip.transition()
             .duration(200)
@@ -160,7 +160,7 @@ var scatter = function (data, options) {
     });
     svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + options["height"] + ")")
+        .attr("transform", "translate(0," + options.height + ")")
         .call(xAxis);
     svg.append("g")
         .attr("class", "y axis")
@@ -174,7 +174,7 @@ var scatter = function (data, options) {
             .attr("class", "legend")
             .attr("transform", function (d, i) { return ("translate(0," + i * 20 + ")"); });
         legend.append("rect")
-            .attr("x", options["width"] - 18)
+            .attr("x", options.width - 18)
             .attr("width", 18)
             .attr("height", 18)
             .attr("class", function (d) { return colorClass(d); })
@@ -182,7 +182,7 @@ var scatter = function (data, options) {
             .on("mouseout", removeFadeout)
             .style("fill", color);
         legend.append("text")
-            .attr("x", options["width"] - 24)
+            .attr("x", options.width - 24)
             .attr("y", 9)
             .attr("dy", ".35em")
             .style("text-anchor", "end")
@@ -216,7 +216,7 @@ var margin = {
     left: 30
 };
 function isNull(val) {
-    return typeof (val) === 'undefined';
+    return typeof (val) === "undefined";
 }
 function distinct(value, index, self) {
     return self.indexOf(value) === index;

@@ -1,47 +1,67 @@
 ﻿"use strict";
 
-declare var d3; // defined in d3.js
+declare var d3 : any; // defined in d3.js
 
 
-// todo: convert to class so we can have properties dependent on other properties
-var defaultOptions = {
-    xIsDate: false,    
-    bubble: false,
-    legend: true,
-    xColumn: null,
-    yColumn: null,
-    rColumn: null, 
-    cColumn: "category",
-    nColumn: "note",
-    height: 300,
-    width: 600,
-    xAxisName: null,
-    yAxisName: null,
-    maxRad: 4,
-    minRad: 1,
-    appendTo: "body",
-    title: null,
-    pointOpacity: 0.7,
-    fadeOutOpacity: 0.1,
+interface IGraphOptions {
+    xIsDate:        boolean;
+    bubble:         boolean;
+    legend:         boolean;
+    xColumn:        string;
+    yColumn:        string;
+    rColumn:        string;
+    cColumn:        string;
+    nColumn:        string;
+    height:         number;
+    width:          number;
+    xAxisName:      string;
+    yAxisName:      string;
+    maxRad:         number;
+    minRad:         number;
+    appendTo:       string;
+    title:          string;
+    pointOpacity:   number;
+    fadeOutOpacity: number
+    dateFormat:     string;
+    [key: string]:  any;
+}
+
+var defaultOptions : IGraphOptions = {
+    xIsDate:  false,    
+    bubble:  false,
+    legend:  true,
+    xColumn:  null,
+    yColumn:  null,
+    rColumn:  null, 
+    cColumn:  "category",
+    nColumn:  "note",
+    height:  300,
+    width:  600,
+    xAxisName:  "",
+    yAxisName:  "",
+    maxRad:  4,
+    minRad:  1,
+    appendTo:  "body",
+    title:  "",
+    pointOpacity:  0.7,
+    fadeOutOpacity:  0.1,
     dateFormat: "%d/%m/%Y"
 }
 
 
 
-var scatter = (data: Array<Object>, options: Object) => {
+var scatter = (data: Array<Object>, options: IGraphOptions) => {
 
 
-    for (let key in defaultOptions) {
-        if (defaultOptions.hasOwnProperty(key)) {
-
+    Object.keys(defaultOptions)
+        .forEach((key: any) => {
             // if the default option is null and it also hasn't been provided, stop
             if (isNull(defaultOptions[key]) && isNull(options[key]))
-                throw (`Option:${key} not supplied`);       
+                throw (`Option:${key} not supplied`);
 
             // if the supplied option is null, assign the default option
             if (isNull(options[key])) options[key] = defaultOptions[key];
-        }
-    }
+        });
 
 
     // this is a bit of a cheeky hack, but if there's no radius column
@@ -49,51 +69,52 @@ var scatter = (data: Array<Object>, options: Object) => {
     // be the yColumn, but make the range of the bubble size equal
 
     // Set the ranges
-    var x = d3.time.scale().range([0, options["width"]]);
-    var y = d3.scale.linear().range([options["height"], 0]);
+    var x = d3.time.scale().range([0, options.width]);
+    var y = d3.scale.linear().range([options.height, 0]);
 
-    data.forEach(d => {
-        d[options["yColumn"]] = +d[options["yColumn"]];
+    data.forEach((d:any) => {
+        d[options.yColumn] = +d[options.yColumn];
     });
 
     y.domain([
-        0, d3.max(data,
-            d => d[options["yColumn"]])
+        0, d3.max(data, (d : any) => d[options.yColumn])
     ]);
 
-    var xValue, rValue, rValueScaled;
+    var xValue : any, rValue : any, rValueScaled : any;
 
     if (options["bubble"]) {
 
         // get largest and smallest radius value so we can scale to that
-        var rads = [];
+        var rads : Array<number> = [];
 
-        for (var i = 0; i < data.length; i++) rads.push(data[i][options["rColumn"]]);
+        data.forEach((d: any) => {
+            rads.push(d[options.rColumn]);
+        });
 
         var max = Math.max.apply(Math, rads);
         var min = Math.min.apply(Math, rads);
 
         var scaleBetween = d3.scale.linear()
             .domain([min, max])
-            .range([options["maxRad"], options["minRad"]]);
+            .range([options.maxRad, options.minRad]);
 
-        rValue = d => d[options["rColumn"]];     
-        rValueScaled = d => scaleBetween(d[options["rColumn"]]);
+        rValue = (d: any) => d[options.rColumn];     
+        rValueScaled = (d: any) => scaleBetween(d[options.rColumn]);
     }
     else 
     {
-        rValue = () => options["maxRad"];
-        rValueScaled = () => options["maxRad"];
+        rValue = () => options.maxRad;
+        rValueScaled = () => options.maxRad;
     }
 
-    if (options["xIsDate"]) {
-        var dateFormat = options["dateFormat"];
+    if (options.xIsDate) {
+        var dateFormat = options.dateFormat;
 
         // Parse the date / time
         var parseDate = d3.time.format(dateFormat).parse;
 
         // parse date to present in a pretty way in the tooltip
-        xValue = d => {
+        xValue = (d: any) => {
 
             var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             var months = [
@@ -101,7 +122,7 @@ var scatter = (data: Array<Object>, options: Object) => {
                 'November', 'December'
             ];
 
-            d = d[options["xColumn"]];
+            d = d[options.xColumn];
 
             var day = days[new Date(d).getDay()].substr(0, 3);
             var month = months[new Date(d).getMonth()];
@@ -111,24 +132,22 @@ var scatter = (data: Array<Object>, options: Object) => {
         };
 
 
-        data.forEach(d => {
-            d[options["xColumn"]] = parseDate(d[options["xColumn"]]);
+        data.forEach((d:any) => {
+            d[options.xColumn] = parseDate(d[options.xColumn]);
         });
 
         // Scale the range of the data
-        x.domain(d3.extent(data,
-            d => d[options["xColumn"]]));
+        x.domain(d3.extent(data, (d : any) => d[options.xColumn]));
 
     } else {
-        xValue = (d): string => d[options["xColumn"]];
+        xValue = (d : any): string => d[options.xColumn];
 
-        data.forEach(d => {
-            d[options["xColumn"]] = +(d[options["xColumn"]]);
+        data.forEach((d:any) => {
+            d[options.xColumn] = +(d[options.xColumn]);
         });
 
         x.domain([
-            0, d3.max(data,
-                d => d[options["xColumn"]])
+            0, d3.max(data, (d:any) => d[options.xColumn])
         ]);
     }
 
@@ -144,8 +163,8 @@ var scatter = (data: Array<Object>, options: Object) => {
             .orient("left")
             .ticks(5);
 
-    var yValue = d => d[options["yColumn"]],
-        cValue = d => d[options["cColumn"]];
+    var yValue = (d:any) => d[options.yColumn],
+        cValue = (d:any) => d[options["cColumn"]];
 
     // add the tooltip area to the webpage
     var tooltip = d3.select("body")
@@ -156,14 +175,14 @@ var scatter = (data: Array<Object>, options: Object) => {
     // Adds the svg canvas
     var svg = d3.select(options["appendTo"])
         .append("svg")
-        .attr("width", options["width"] + margin.left + margin.right)
-        .attr("height", options["height"] + margin.top + margin.bottom)
+        .attr("width", options.width + margin.left + margin.right)
+        .attr("height", options.height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
     // title
     svg.append("text")
-        .attr("x", (options["width"] / 2))
+        .attr("x", (options.width / 2))
         .attr("y", 0 - (margin.top / 2))
         .attr("text-anchor", "middle")
         .style("font-weight", "bold")
@@ -172,10 +191,10 @@ var scatter = (data: Array<Object>, options: Object) => {
     // x-axis
     svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + options["height"] + ")")
+        .attr("transform", "translate(0," + options.height + ")")
         .append("text")
         .attr("class", "label")
-        .attr("x", options["width"])
+        .attr("x", options.width)
         .attr("y", -6)
         .style("text-anchor", "end")
         .text(options["xAxisName"]);
@@ -197,13 +216,13 @@ var scatter = (data: Array<Object>, options: Object) => {
         .data(data)
         .enter()
         .append("circle")
-        .attr("class", (d, i) => data[i][options["cColumn"]])
-        .attr("r",      d => rValueScaled(d))
-        .style("fill",  d => color(cValue(d)))
-        .attr("cx",     d => x(d[options["xColumn"]]))
-        .attr("cy",     d => y(d[options["yColumn"]]))
+        .attr("class", (d:any, i:number) => d[options.cColumn])
+        .attr("r",      (d:any) =>  rValueScaled(d))
+        .style("fill",  (d:any) =>  color(cValue(d)))
+        .attr("cx",     (d:any) =>  x(d[options.xColumn]))
+        .attr("cy",     (d:any) =>  y(d[options.yColumn]))
         .on("mouseover",
-            d => {
+            (d:any) =>  {
                 tooltip.transition()
                     .duration(200)
                     .style("opacity", .9);
@@ -224,7 +243,7 @@ var scatter = (data: Array<Object>, options: Object) => {
                     .style("top", (d3.event.pageY - 28) + "px");
             })
         .on("mouseout",
-            (): void => {
+            (): void =>  {
                 tooltip.transition()
                     .duration(200)
                     .style("opacity", 0);
@@ -234,7 +253,7 @@ var scatter = (data: Array<Object>, options: Object) => {
     // Add the X Axis
     svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + options["height"] + ")")
+        .attr("transform", "translate(0," + options.height + ")")
         .call(xAxis);
 
     // Add the Y Axis
@@ -243,7 +262,7 @@ var scatter = (data: Array<Object>, options: Object) => {
         .call(yAxis);
 
     // get unique cColumn categories for the legend
-    const categories = [... data.map(obj => obj[options["cColumn"]])].filter(distinct);
+    const categories = [... data.map((obj: any) => obj[options["cColumn"]])].filter(distinct);
 
     // draw legend
     if (options["legend"]) {
@@ -252,26 +271,26 @@ var scatter = (data: Array<Object>, options: Object) => {
             .enter()
             .append("g")
             .attr("class", "legend")
-            .attr("transform", (d, i) => (`translate(0,${i * 20})`));
+            .attr("transform", (d:any, i:number) => (`translate(0,${i * 20})`));
 
 
         // draw legend colored rectangles
         legend.append("rect")
-            .attr("x", options["width"] - 18)
+            .attr("x", options.width - 18)
             .attr("width", 18)
             .attr("height", 18)
-            .attr("class", (d) => colorClass(d)) // the subject name is the class
+            .attr("class", (d:any) => colorClass(d)) // the subject name is the class
             .on("mouseover", fadeOutOtherPoints)
             .on("mouseout", removeFadeout)
             .style("fill", color);
 
         // draw legend text
         legend.append("text")
-            .attr("x", options["width"] - 24)
+            .attr("x", options.width - 24)
             .attr("y", 9)
             .attr("dy", ".35em")
             .style("text-anchor", "end")
-            .text(d => d)
+            .text((d:any) => d)
             .on("mouseover", fadeOutOtherPoints)
             .on("mouseout", removeFadeout);
     }
@@ -445,11 +464,11 @@ var margin = {
 };
 
 
-function isNull(val) {
-    return typeof (val) === 'undefined';
+function isNull(val:any) {
+    return typeof (val) === "undefined";
 }
 
 
-function distinct(value, index, self) {
+function distinct(value:any, index:any, self:any) {
     return self.indexOf(value) === index;
 }
